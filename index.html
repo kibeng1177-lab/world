@@ -1,0 +1,783 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Earn Platform - Daily 11% Click Earning</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#4F46E5',
+                        airtel: '#FF0000'
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans antialiased min-h-screen">
+
+    <!-- App Container -->
+    <div id="app" class="max-w-md mx-auto bg-white min-h-screen shadow-2xl relative flex flex-col justify-between">
+        
+        <!-- Dynamic Content Area -->
+        <div id="main-content" class="flex-grow pb-20">
+            <!-- Rendered via JavaScript -->
+        </div>
+
+        <!-- Bottom Navigation Bar (Visible only for logged-in Users) -->
+        <nav id="bottom-nav" class="hidden fixed bottom-0 max-w-md w-full bg-white border-t border-slate-200 py-3 px-6 flex justify-around items-center z-50 shadow-lg">
+            <button onclick="switchTab('dashboard')" class="nav-btn flex flex-col items-center text-primary" data-tab="dashboard">
+                <i class="fa-solid fa-house text-lg"></i>
+                <span class="text-xs mt-1">Home</span>
+            </button>
+            <button onclick="switchTab('products')" class="nav-btn flex flex-col items-center text-slate-400" data-tab="products">
+                <i class="fa-solid fa-mobile-screen-button text-lg"></i>
+                <span class="text-xs mt-1">Products</span>
+            </button>
+            <button onclick="switchTab('team')" class="nav-btn flex flex-col items-center text-slate-400" data-tab="team">
+                <i class="fa-solid fa-users text-lg"></i>
+                <span class="text-xs mt-1">Team</span>
+            </button>
+            <button onclick="switchTab('profile')" class="nav-btn flex flex-col items-center text-slate-400" data-tab="profile">
+                <i class="fa-solid fa-user text-lg"></i>
+                <span class="text-xs mt-1">Profile</span>
+            </button>
+        </nav>
+    </div>
+
+    <!-- JavaScript Application Logic -->
+    <script>
+        const ADMIN_CREDENTIALS = { email: "admin@management.com", pass: "admin123" };
+        
+        function loadDatabase() {
+            return {
+                currentUser: JSON.parse(localStorage.getItem('se_current_user')) || null,
+                users: JSON.parse(localStorage.getItem('se_users')) || [],
+                products: JSON.parse(localStorage.getItem('se_products')) || [
+                    { id: 1, name: "Flagship X-Phone Pro", price: 1300, daily: 143, cycle: 16, total: 2288, image: "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&w=500&q=80" },
+                    { id: 2, name: "Ultra Vision 5G", price: 3000, daily: 345, cycle: 16, total: 5520, image: "https://images.unsplash.com/photo-1598327105666-5b89351aff97?auto=format&fit=crop&w=500&q=80" },
+                    { id: 3, name: "Foldable Z-Edition", price: 6500, daily: 780, cycle: 18, total: 14040, image: "https://images.unsplash.com/photo-1565849904461-04a58ad377e0?auto=format&fit=crop&w=500&q=80" }
+                ],
+                pendingRecharges: JSON.parse(localStorage.getItem('se_pending_recharges')) || [],
+                pendingWithdraws: JSON.parse(localStorage.getItem('se_pending_withdraws')) || [],
+                allInvestments: JSON.parse(localStorage.getItem('se_investments')) || []
+            };
+        }
+
+        let db = loadDatabase();
+
+        function saveState() {
+            localStorage.setItem('se_users', JSON.stringify(db.users));
+            localStorage.setItem('se_products', JSON.stringify(db.products));
+            localStorage.setItem('se_pending_recharges', JSON.stringify(db.pendingRecharges));
+            localStorage.setItem('se_pending_withdraws', JSON.stringify(db.pendingWithdraws));
+            localStorage.setItem('se_investments', JSON.stringify(db.allInvestments));
+            if(db.currentUser) {
+                localStorage.setItem('se_current_user', JSON.stringify(db.currentUser));
+            } else {
+                localStorage.removeItem('se_current_user');
+            }
+        }
+
+        window.addEventListener('storage', () => {
+            db = loadDatabase();
+            if(db.currentUser && db.currentUser.isAdmin) {
+                renderAdminDashboard();
+            } else if(db.currentUser) {
+                const latestUser = db.users.find(u => u.identifier === db.currentUser.identifier);
+                if(latestUser) {
+                    db.currentUser = latestUser;
+                    renderDashboard(document.getElementById('main-content'));
+                }
+            }
+        });
+
+        window.onload = function() {
+            db = loadDatabase();
+            if(db.currentUser) {
+                if(db.currentUser.isAdmin) {
+                    renderAdminDashboard();
+                } else {
+                    showAppUI();
+                    switchTab('dashboard');
+                }
+            } else {
+                renderAuth();
+            }
+        };
+
+        function showAppUI() {
+            document.getElementById('bottom-nav').classList.remove('hidden');
+        }
+
+        function hideAppUI() {
+            document.getElementById('bottom-nav').classList.add('hidden');
+        }
+
+        let authMode = 'login';
+
+        function renderAuth() {
+            hideAppUI();
+            const container = document.getElementById('main-content');
+            container.innerHTML = `
+                <div class="p-8 flex flex-col justify-center min-h-[90vh]">
+                    <div class="text-center mb-8">
+                        <div class="inline-block p-4 bg-primary/15 rounded-full text-primary text-3xl mb-3">
+                            <i class="fa-solid fa-shield-halved"></i>
+                        </div>
+                        <h1 class="text-2xl font-bold text-slate-900">Smart Earn Portal</h1>
+                        <p class="text-sm text-slate-500 mt-1">Smartphone Daily 11% Earning Platform</p>
+                    </div>
+
+                    <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-xl">
+                        <div class="flex border-b border-slate-100 mb-6">
+                            <button onclick="setAuthMode('login')" class="flex-1 pb-3 font-semibold text-sm ${authMode === 'login' ? 'border-b-2 border-primary text-primary' : 'text-slate-400'}">Login</button>
+                            <button onclick="setAuthMode('register')" class="flex-1 pb-3 font-semibold text-sm ${authMode === 'register' ? 'border-b-2 border-primary text-primary' : 'text-slate-400'}">Register</button>
+                        </div>
+
+                        <form onsubmit="handleAuth(event)" class="space-y-4">
+                            <div>
+                                <label class="block text-xs font-semibold uppercase text-slate-500 mb-1">Email / Phone No</label>
+                                <input type="text" id="auth-identifier" required class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:border-primary text-sm" placeholder="Email or Phone">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold uppercase text-slate-500 mb-1">Password</label>
+                                <input type="password" id="auth-password" required class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:border-primary text-sm" placeholder="••••••••">
+                            </div>
+                            ${authMode === 'register' ? `
+                            <div>
+                                <label class="block text-xs font-semibold uppercase text-slate-500 mb-1">Invitation Code (Optional)</label>
+                                <input type="text" id="auth-invite" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:border-primary text-sm" placeholder="e.g. SE-8921">
+                            </div>
+                            ` : ''}
+                            <button type="submit" class="w-full bg-primary text-white py-3 rounded-xl font-semibold shadow-lg shadow-primary/30 hover:bg-indigo-700 transition mt-2">
+                                ${authMode === 'login' ? 'Login to Portal' : 'Register Account'}
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            `;
+        }
+
+        function setAuthMode(mode) {
+            authMode = mode;
+            renderAuth();
+        }
+
+        function handleAuth(e) {
+            e.preventDefault();
+            db = loadDatabase();
+            const identifier = document.getElementById('auth-identifier').value.trim();
+            const password = document.getElementById('auth-password').value;
+
+            if(identifier.toLowerCase() === ADMIN_CREDENTIALS.email && password === ADMIN_CREDENTIALS.pass) {
+                db.currentUser = { email: ADMIN_CREDENTIALS.email, isAdmin: true };
+                saveState();
+                renderAdminDashboard();
+                return;
+            }
+
+            if(authMode === 'register') {
+                const existing = db.users.find(u => u.identifier === identifier);
+                if(existing) {
+                    alert('User with this email or phone already exists!');
+                    return;
+                }
+                const newUser = {
+                    identifier,
+                    password,
+                    balance: 0,
+                    totalRecharged: 0,
+                    totalWithdrawn: 0,
+                    invitationCode: 'SE-' + Math.floor(1000 + Math.random() * 9000),
+                    status: 'Unverified / Pending Recharge',
+                    recharges: [],
+                    withdraws: [],
+                    activeInvestments: []
+                };
+                db.users.push(newUser);
+                db.currentUser = newUser;
+                saveState();
+                alert('Account registered! Recharge via Airtel Money to unlock dashboard funds.');
+                showAppUI();
+                switchTab('dashboard');
+            } else {
+                const user = db.users.find(u => u.identifier === identifier && u.password === password);
+                if(!user) {
+                    alert('Invalid login credentials.');
+                    return;
+                }
+                db.currentUser = user;
+                saveState();
+                showAppUI();
+                switchTab('dashboard');
+            }
+        }
+
+        function logout() {
+            db.currentUser = null;
+            saveState();
+            hideAppUI();
+            renderAuth();
+        }
+
+        function switchTab(tabName) {
+            db = loadDatabase();
+            if(db.currentUser && !db.currentUser.isAdmin) {
+                const fresh = db.users.find(u => u.identifier === db.currentUser.identifier);
+                if(fresh) db.currentUser = fresh;
+            }
+
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                if(btn.dataset.tab === tabName) {
+                    btn.classList.remove('text-slate-400');
+                    btn.classList.add('text-primary');
+                } else {
+                    btn.classList.add('text-slate-400');
+                    btn.classList.remove('text-primary');
+                }
+            });
+
+            const content = document.getElementById('main-content');
+            if(tabName === 'dashboard') renderDashboard(content);
+            else if(tabName === 'products') renderProducts(content);
+            else if(tabName === 'team') renderTeam(content);
+            else if(tabName === 'profile') renderProfile(content);
+        }
+
+        function renderDashboard(container) {
+            const hasRecharged = db.currentUser.totalRecharged > 0;
+            container.innerHTML = `
+                <div class="p-6 space-y-6">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <span class="text-xs text-slate-400 uppercase font-semibold">User Dashboard</span>
+                            <h2 class="text-lg font-bold text-slate-900">${db.currentUser.identifier}</h2>
+                        </div>
+                        <span class="px-3 py-1 bg-amber-50 text-amber-600 text-xs font-semibold rounded-full border border-amber-200">
+                            ${db.currentUser.status}
+                        </span>
+                    </div>
+
+                    <div class="bg-gradient-to-br from-primary to-indigo-700 text-white p-6 rounded-3xl shadow-xl space-y-4">
+                        <div>
+                            <p class="text-xs text-indigo-200 uppercase font-medium">Reflected Balance</p>
+                            <h3 class="text-3xl font-extrabold mt-1">${hasRecharged ? db.currentUser.balance.toLocaleString() : '0.00'} <span class="text-sm font-normal">KES</span></h3>
+                        </div>
+                        <div class="flex gap-3 pt-2">
+                            <button onclick="openRechargeModal()" class="flex-1 bg-white text-primary py-2.5 rounded-xl font-semibold text-sm shadow hover:bg-slate-50 transition">
+                                <i class="fa-solid fa-wallet mr-1"></i> Recharge
+                            </button>
+                            <button onclick="openWithdrawModal()" class="flex-1 bg-indigo-800 text-white py-2.5 rounded-xl font-semibold text-sm border border-indigo-600 hover:bg-indigo-900 transition">
+                                <i class="fa-solid fa-money-bill-transfer mr-1"></i> Withdraw
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="bg-blue-50 border border-blue-100 p-4 rounded-2xl flex items-start gap-3">
+                        <i class="fa-solid fa-circle-info text-blue-500 mt-1"></i>
+                        <p class="text-xs text-blue-700 leading-relaxed">
+                            Click once a day on your active products to collect your 11% daily earnings.
+                        </p>
+                    </div>
+
+                    <div>
+                        <div class="flex justify-between items-center mb-3">
+                            <h4 class="font-bold text-slate-800 text-sm">Active Product Cycles</h4>
+                            <span class="text-xs text-slate-400">${db.currentUser.activeInvestments.length} Active</span>
+                        </div>
+                        <div class="space-y-3">
+                            ${db.currentUser.activeInvestments.length === 0 ? `
+                                <div class="text-center py-8 bg-white border border-dashed border-slate-200 rounded-2xl">
+                                    <i class="fa-solid fa-box-open text-3xl text-slate-300 mb-2"></i>
+                                    <p class="text-xs text-slate-500">No active products. Browse the Products tab.</p>
+                                </div>
+                            ` : db.currentUser.activeInvestments.map(inv => {
+                                const todayStr = new Date().toDateString();
+                                const alreadyClickedToday = inv.lastClickedDate === todayStr;
+                                return `
+                                <div class="bg-white border border-slate-100 p-4 rounded-2xl shadow-sm flex items-center justify-between">
+                                    <div class="flex items-center gap-3">
+                                        <img src="${inv.image}" class="w-12 h-12 object-cover rounded-xl border border-slate-100">
+                                        <div>
+                                            <h5 class="font-bold text-xs text-slate-800">${inv.name}</h5>
+                                            <p class="text-[10px] text-slate-400">Daily: +${inv.daily} KES \vert{} Days Left:${inv.daysLeft}</p>
+                                        </div>
+                                    </div>
+                                    <button onclick="claimDailyEarning('${inv.id}')" ${alreadyClickedToday ? 'disabled class="bg-slate-300 text-slate-500 px-3 py-1.5 rounded-xl text-xs font-semibold cursor-not-allowed"' : 'class="bg-emerald-500 text-white px-3 py-1.5 rounded-xl text-xs font-semibold shadow hover:bg-emerald-600 transition"'}>
+                                        <i class="fa-solid fa-hand-pointer mr-1"></i> ${alreadyClickedToday ? 'Already Claimed Today' : 'Click to Earn 11%'}
+                                    </button>
+                                </div>
+                            `;}).join('')}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderProducts(container) {
+            container.innerHTML = `
+                <div class="p-6 space-y-4">
+                    <h2 class="text-lg font-bold text-slate-900">Latest Smartphone Products</h2>
+                    <p class="text-xs text-slate-500">Purchase a smartphone product to earn your daily 11% returns.</p>
+                    
+                    <div class="space-y-4 pt-2">
+                        ${db.products.map(prod => `
+                            <div class="bg-white border border-slate-100 rounded-2xl overflow-hidden shadow-sm">
+                                <img src="${prod.image}" class="w-full h-40 object-cover">
+                                <div class="p-4 space-y-3">
+                                    <h3 class="font-bold text-slate-800 text-sm">${prod.name}</h3>
+                                    <div class="grid grid-cols-2 gap-2 text-xs bg-slate-50 p-3 rounded-xl border border-slate-100">
+                                        <div><span class="text-slate-400">Price:</span> <strong class="text-slate-700">${prod.price} KES</strong></div>
+                                        <div><span class="text-slate-400">Daily Earning:</span> <strong class="text-emerald-600">${prod.daily} KES</strong></div>
+                                        <div><span class="text-slate-400">Cycle Days:</span> <strong class="text-slate-700">${prod.cycle} Days</strong></div>
+                                        <div><span class="text-slate-400">Total Revenue:</span> <strong class="text-indigo-600">${prod.total} KES</strong></div>
+                                    </div>
+                                    <button onclick="buyProduct(${prod.id})" class="w-full bg-primary text-white py-2.5 rounded-xl text-xs font-semibold shadow hover:bg-indigo-700 transition">
+                                        Purchase Product
+                                    </button>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        function buyProduct(prodId) {
+            db = loadDatabase();
+            const currentUserInDb = db.users.find(u => u.identifier === db.currentUser.identifier);
+            const prod = db.products.find(p => p.id === prodId);
+            
+            if(currentUserInDb.totalRecharged <= 0 || currentUserInDb.balance < prod.price) {
+                alert('Purchase denied! You must recharge first and have verified balance.');
+                return;
+            }
+
+            const alreadyActive = currentUserInDb.activeInvestments.some(inv => inv.productId === prod.id);
+            if(alreadyActive) {
+                alert('You cannot buy the same product concurrently while its cycle is active!');
+                return;
+            }
+
+            currentUserInDb.balance -= prod.price;
+            const newInvestment = {
+                id: 'INV-' + Math.floor(10000 + Math.random() * 90000),
+                productId: prod.id,
+                name: prod.name,
+                image: prod.image,
+                price: prod.price,
+                daily: prod.daily,
+                daysLeft: prod.cycle,
+                totalRevenue: prod.total,
+                lastClickedDate: null,
+                purchasedAt: new Date().toLocaleString()
+            };
+
+            currentUserInDb.activeInvestments.push(newInvestment);
+            db.allInvestments.push({ user: currentUserInDb.identifier, ...newInvestment });
+            
+            db.currentUser = currentUserInDb;
+            saveState();
+            alert(`Successfully purchased ${prod.name}! You can now click once daily to earn.`);
+            switchTab('dashboard');
+        }
+
+        function claimDailyEarning(invId) {
+            db = loadDatabase();
+            const currentUserInDb = db.users.find(u => u.identifier === db.currentUser.identifier);
+            const inv = currentUserInDb.activeInvestments.find(i => i.id === invId);
+            if(!inv) return;
+
+            const todayStr = new Date().toDateString();
+            if(inv.lastClickedDate === todayStr) {
+                alert('You have already clicked this product today! Come back tomorrow.');
+                return;
+            }
+
+            currentUserInDb.balance += inv.daily;
+            inv.lastClickedDate = todayStr;
+            inv.daysLeft -= 1;
+
+            if(inv.daysLeft <= 0) {
+                currentUserInDb.activeInvestments = currentUserInDb.activeInvestments.filter(i => i.id !== invId);
+                alert(`Cycle completed for ${inv.name}! Total revenue collected.`);
+            } else {
+                alert(`Successfully clicked! Earned ${inv.daily} KES for today.`);
+            }
+
+            db.currentUser = currentUserInDb;
+            saveState();
+            renderDashboard(document.getElementById('main-content'));
+        }
+
+        function renderTeam(container) {
+            container.innerHTML = `
+                <div class="p-6 space-y-6">
+                    <h2 class="text-lg font-bold text-slate-900">Team Profile & Invitation</h2>
+                    
+                    <div class="bg-gradient-to-r from-slate-900 to-indigo-950 text-white p-6 rounded-3xl space-y-4 shadow-xl">
+                        <p class="text-xs text-slate-300 uppercase font-semibold">Your Invitation Code</p>
+                        <div class="flex items-center justify-between bg-white/10 p-3 rounded-xl border border-white/10">
+                            <span class="font-mono font-bold text-lg tracking-wider">${db.currentUser.invitationCode}</span>
+                            <button onclick="navigator.clipboard.writeText('${db.currentUser.invitationCode}'); alert('Copied invitation code!');" class="bg-white text-slate-900 px-3 py-1.5 rounded-lg text-xs font-semibold">Copy</button>
+                        </div>
+                        <p class="text-[11px] text-slate-300">Invite new members using your unique code to build your team network.</p>
+                    </div>
+
+                    <div class="bg-white border border-slate-100 p-5 rounded-2xl shadow-sm space-y-3">
+                        <h3 class="font-bold text-xs uppercase text-slate-400">Team Network Overview</h3>
+                        <div class="grid grid-cols-2 gap-4 text-center">
+                            <div class="p-3 bg-slate-50 rounded-xl">
+                                <span class="text-2xl font-bold text-slate-800">0</span>
+                                <p class="text-xs text-slate-400 mt-1">Team Members</p>
+                            </div>
+                            <div class="p-3 bg-slate-50 rounded-xl">
+                                <span class="text-2xl font-bold text-emerald-600">0 KES</span>
+                                <p class="text-xs text-slate-400 mt-1">Team Commission</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderProfile(container) {
+            container.innerHTML = `
+                <div class="p-6 space-y-6">
+                    <div class="flex justify-between items-center">
+                        <h2 class="text-lg font-bold text-slate-900">Member Profile</h2>
+                        <button onclick="logout()" class="text-red-500 text-xs font-semibold"><i class="fa-solid fa-arrow-right-from-bracket mr-1"></i> Logout</button>
+                    </div>
+
+                    <div class="bg-white border border-slate-100 p-5 rounded-2xl shadow-sm space-y-4">
+                        <div>
+                            <span class="text-[10px] text-slate-400 uppercase font-semibold">Account Identifier</span>
+                            <p class="font-bold text-sm text-slate-800">${db.currentUser.identifier}</p>
+                        </div>
+                        <div>
+                            <span class="text-[10px] text-slate-400 uppercase font-semibold">Member Status</span>
+                            <p class="font-bold text-xs text-amber-600">${db.currentUser.status}</p>
+                        </div>
+                    </div>
+
+                    <div class="space-y-4">
+                        <h3 class="font-bold text-xs uppercase text-slate-400">Recharge History</h3>
+                        <div class="space-y-2">
+                            ${(db.currentUser.recharges || []).length === 0 ? '<p class="text-xs text-slate-400">No recharge records.</p>' : db.currentUser.recharges.map(r => `
+                                <div class="bg-white p-3 rounded-xl border border-slate-100 text-xs flex justify-between items-center">
+                                    <div><strong>${r.amount} KES</strong> <br><span class="text-[10px] text-slate-400">${r.date}</span></div>
+                                    <span class="px-2 py-1 rounded bg-amber-50 text-amber-600 font-semibold text-[10px]">${r.status}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+
+                        <h3 class="font-bold text-xs uppercase text-slate-400 pt-2">Withdraw History</h3>
+                        <div class="space-y-2">
+                            ${(db.currentUser.withdraws || []).length === 0 ? '<p class="text-xs text-slate-400">No withdraw records.</p>' : db.currentUser.withdraws.map(w => `
+                                <div class="bg-white p-3 rounded-xl border border-slate-100 text-xs flex justify-between items-center">
+                                    <div><strong>${w.amount} KES</strong> <br><span class="text-[10px] text-slate-400">${w.date}</span></div>
+                                    <span class="px-2 py-1 rounded bg-amber-50 text-amber-600 font-semibold text-[10px]">${w.status}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function openRechargeModal() {
+            const modalHTML = `
+                <div id="custom-modal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+                    <div class="bg-white w-full max-w-sm rounded-3xl p-6 space-y-4 shadow-2xl">
+                        <div class="flex justify-between items-center">
+                            <h3 class="font-bold text-slate-900 text-base">Recharge Account</h3>
+                            <button onclick="closeModal()" class="text-slate-400"><i class="fa-solid fa-xmark text-lg"></i></button>
+                        </div>
+                        <div class="bg-red-50 border border-red-100 p-4 rounded-2xl text-xs space-y-2">
+                            <p class="font-bold text-airtel flex items-center gap-1"><i class="fa-solid fa-sim-card"></i> Airtel Money Account Only (No M-Pesa)</p>
+                            <p class="text-slate-600">Send deposit payment to Airtel Number: <strong class="text-slate-900 font-mono text-sm block mt-1">0737047849</strong></p>
+                        </div>
+                        <form onsubmit="submitRecharge(event)" class="space-y-3">
+                            <div>
+                                <label class="block text-xs font-semibold uppercase text-slate-500 mb-1">Amount (KES)</label>
+                                <input type="number" id="recharge-amount" required min="100" class="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm focus:outline-none focus:border-primary" placeholder="e.g. 1300">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold uppercase text-slate-500 mb-1">Airtel Transaction Code</label>
+                                <input type="text" id="recharge-code" required class="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm focus:outline-none focus:border-primary" placeholder="Transaction Reference Code">
+                            </div>
+                            <button type="submit" class="w-full bg-primary text-white py-3 rounded-xl font-semibold text-sm shadow hover:bg-indigo-700 transition">Submit Recharge for Verification</button>
+                        </form>
+                    </div>
+                </div>
+            `;
+            document.body.insertAdjacentHTML('beforeend', modalHTML);
+        }
+
+        function submitRecharge(e) {
+            e.preventDefault();
+            db = loadDatabase();
+            const currentUserInDb = db.users.find(u => u.identifier === db.currentUser.identifier);
+            const amount = parseFloat(document.getElementById('recharge-amount').value);
+            const txCode = document.getElementById('recharge-code').value;
+
+            const rechargeObj = {
+                id: 'RCH-' + Math.floor(1000 + Math.random() * 9000),
+                user: currentUserInDb.identifier,
+                amount,
+                txCode,
+                date: new Date().toLocaleString(),
+                status: 'Pending Verification'
+            };
+
+            db.pendingRecharges.push(rechargeObj);
+            if(!currentUserInDb.recharges) currentUserInDb.recharges = [];
+            currentUserInDb.recharges.push(rechargeObj);
+            db.currentUser = currentUserInDb;
+            saveState();
+            closeModal();
+            alert('Recharge submitted! Awaiting verification from management.');
+        }
+
+        function openWithdrawModal() {
+            const modalHTML = `
+                <div id="custom-modal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+                    <div class="bg-white w-full max-w-sm rounded-3xl p-6 space-y-4 shadow-2xl">
+                        <div class="flex justify-between items-center">
+                            <h3 class="font-bold text-slate-900 text-base">Withdraw Funds</h3>
+                            <button onclick="closeModal()" class="text-slate-400"><i class="fa-solid fa-xmark text-lg"></i></button>
+                        </div>
+                        <p class="text-xs text-slate-500">Minimum withdrawal limit is <strong class="text-slate-800">100 KES</strong>.</p>
+                        <form onsubmit="submitWithdraw(event)" class="space-y-3">
+                            <div>
+                                <label class="block text-xs font-semibold uppercase text-slate-500 mb-1">Amount (KES)</label>
+                                <input type="number" id="withdraw-amount" required min="100" class="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm focus:outline-none focus:border-primary" placeholder="Min 100">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold uppercase text-slate-500 mb-1">Airtel Money Phone Number</label>
+                                <input type="text" id="withdraw-phone" required class="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm focus:outline-none focus:border-primary" placeholder="07XXXXXXXX">
+                            </div>
+                            <button type="submit" class="w-full bg-primary text-white py-3 rounded-xl font-semibold text-sm shadow hover:bg-indigo-700 transition">Request Withdrawal</button>
+                        </form>
+                    </div>
+                </div>
+            `;
+            document.body.insertAdjacentHTML('beforeend', modalHTML);
+        }
+
+        function submitWithdraw(e) {
+            e.preventDefault();
+            db = loadDatabase();
+            const currentUserInDb = db.users.find(u => u.identifier === db.currentUser.identifier);
+            const amount = parseFloat(document.getElementById('withdraw-amount').value);
+            
+            if(amount < 100) {
+                alert('Minimum withdrawal amount is 100 KES.');
+                return;
+            }
+            if(amount > currentUserInDb.balance) {
+                alert('Insufficient verified balance.');
+                return;
+            }
+
+            currentUserInDb.balance -= amount;
+            const withdrawObj = {
+                id: 'WTH-' + Math.floor(1000 + Math.random() * 9000),
+                user: currentUserInDb.identifier,
+                amount,
+                date: new Date().toLocaleString(),
+                status: 'Pending Verification'
+            };
+
+            db.pendingWithdraws.push(withdrawObj);
+            if(!currentUserInDb.withdraws) currentUserInDb.withdraws = [];
+            currentUserInDb.withdraws.push(withdrawObj);
+            db.currentUser = currentUserInDb;
+            saveState();
+            closeModal();
+            alert('Withdrawal request submitted successfully.');
+            renderDashboard(document.getElementById('main-content'));
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('custom-modal');
+            if(modal) modal.remove();
+        }
+
+        function renderAdminDashboard() {
+            db = loadDatabase();
+            hideAppUI();
+            const container = document.getElementById('main-content');
+            container.innerHTML = `
+                <div class="p-6 space-y-6 max-w-2xl mx-auto">
+                    <div class="flex justify-between items-center border-b border-slate-200 pb-4">
+                        <div>
+                            <span class="text-xs font-bold text-indigo-600 uppercase">Management Control Center</span>
+                            <h2 class="text-xl font-extrabold text-slate-900">Admin Verification Portal</h2>
+                        </div>
+                        <button onclick="logout()" class="bg-red-50 text-red-600 px-3 py-1.5 rounded-xl text-xs font-semibold">Logout</button>
+                    </div>
+
+                    <div class="grid grid-cols-3 gap-3">
+                        <div class="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm text-center">
+                            <span class="text-xl font-bold text-slate-800">${db.users.length}</span>
+                            <p class="text-[10px] uppercase font-semibold text-slate-400 mt-1">Total Users</p>
+                        </div>
+                        <div class="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm text-center">
+                            <span class="text-xl font-bold text-amber-600">${db.pendingRecharges.length}</span>
+                            <p class="text-[10px] uppercase font-semibold text-slate-400 mt-1">Pending Recharges</p>
+                        </div>
+                        <div class="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm text-center">
+                            <span class="text-xl font-bold text-indigo-600">${db.pendingWithdraws.length}</span>
+                            <p class="text-[10px] uppercase font-semibold text-slate-400 mt-1">Pending Withdrawals</p>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm space-y-3">
+                        <h3 class="font-bold text-sm text-slate-800"><i class="fa-solid fa-plus-circle text-primary mr-1"></i> Add New Product Inventory</h3>
+                        <form onsubmit="adminAddProduct(event)" class="space-y-3">
+                            <div class="grid grid-cols-2 gap-2">
+                                <input type="text" id="ap-name" required placeholder="Product Name" class="p-2.5 rounded-xl border border-slate-200 text-xs">
+                                <input type="number" id="ap-price" required placeholder="Price (KES)" class="p-2.5 rounded-xl border border-slate-200 text-xs">
+                                <input type="number" id="ap-daily" required placeholder="Daily Earning" class="p-2.5 rounded-xl border border-slate-200 text-xs">
+                                <input type="number" id="ap-cycle" required placeholder="Cycle Days" class="p-2.5 rounded-xl border border-slate-200 text-xs">
+                            </div>
+                            <input type="url" id="ap-img" required placeholder="Image URL" class="w-full p-2.5 rounded-xl border border-slate-200 text-xs">
+                            <button type="submit" class="w-full bg-slate-900 text-white py-2.5 rounded-xl text-xs font-semibold">Publish New Product</button>
+                        </form>
+                    </div>
+
+                    <div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm space-y-3">
+                        <h3 class="font-bold text-sm text-slate-800">Verify Recharges (Airtel Money: 0737047849)</h3>
+                        <div class="space-y-2">
+                            ${db.pendingRecharges.length === 0 ? '<p class="text-xs text-slate-400">No pending recharges.</p>' : db.pendingRecharges.map(r => `
+                                <div class="bg-slate-50 p-3 rounded-xl border border-slate-100 text-xs flex justify-between items-center">
+                                    <div>
+                                        <strong>${r.user}</strong> deposited <span class="text-primary font-bold">${r.amount} KES</span><br>
+                                        <span class="text-[10px] text-slate-400">Code: ${r.txCode} \vert{}${r.date}</span>
+                                    </div>
+                                    <button onclick="verifyRecharge('${r.id}')" class="bg-emerald-500 text-white px-3 py-1.5 rounded-lg text-xs font-semibold">Verify & Credit</button>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm space-y-3">
+                        <h3 class="font-bold text-sm text-slate-800">Verify Withdrawals</h3>
+                        <div class="space-y-2">
+                            ${db.pendingWithdraws.length === 0 ? '<p class="text-xs text-slate-400">No pending withdrawals.</p>' : db.pendingWithdraws.map(w => `
+                                <div class="bg-slate-50 p-3 rounded-xl border border-slate-100 text-xs flex justify-between items-center">
+                                    <div>
+                                        <strong>${w.user}</strong> requested <span class="text-indigo-600 font-bold">${w.amount} KES</span><br>
+                                        <span class="text-[10px] text-slate-400">${w.date}</span>
+                                    </div>
+                                    <button onclick="verifyWithdraw('${w.id}')" class="bg-indigo-600 text-white px-3 py-1.5 rounded-lg text-xs font-semibold">Approve Payout</button>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm space-y-3">
+                        <h3 class="font-bold text-sm text-slate-800">Inspect Verified Users & Purchased Products</h3>
+                        <div class="space-y-3">
+                            ${db.users.length === 0 ? '<p class="text-xs text-slate-400">No registered users yet.</p>' : db.users.map(u => `
+                                <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-100 space-y-2 text-xs">
+                                    <div class="flex justify-between items-center">
+                                        <div>
+                                            <strong class="text-slate-900">${u.identifier}</strong><br>
+                                            <span class="text-[10px] text-slate-400">Status: <span class="text-amber-600 font-semibold">${u.status}</span> \vert{} Balance:${u.balance} KES</span>
+                                        </div>
+                                        <span class="px-2 py-1 bg-indigo-50 text-indigo-700 font-semibold rounded text-[10px]">Recharged: ${u.totalRecharged} KES</span>
+                                    </div>
+                                    <div class="border-t border-slate-200 pt-2">
+                                        <p class="text-[11px] font-bold text-slate-600 mb-1">Active Purchased Products (${u.activeInvestments.length}):</p>${u.activeInvestments.length === 0 ? '<span class="text-[10px] text-slate-400 italic">No active product purchases.</span>' : u.activeInvestments.map(inv => `
+                                            <div class="flex items-center justify-between bg-white p-2 rounded-lg border border-slate-100 mt-1">
+                                                <div class="flex items-center gap-2">
+                                                    <img src="${inv.image}" class="w-8 h-8 rounded object-cover">
+                                                    <div>
+                                                        <p class="font-bold text-[11px]">${inv.name}</p>
+                                                        <span class="text-[9px] text-slate-400">Daily Earning: ${inv.daily} KES | Days Left: ${inv.daysLeft}</span>
+                                                    </div>
+                                                </div>
+                                                <span class="text-[10px] text-emerald-600 font-bold">${inv.price} KES</span>
+                                            </div>
+                                        `).join('')}
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function adminAddProduct(e) {
+            e.preventDefault();
+            db = loadDatabase();
+            const name = document.getElementById('ap-name').value;
+            const price = parseFloat(document.getElementById('ap-price').value);
+            const daily = parseFloat(document.getElementById('ap-daily').value);
+            const cycle = parseInt(document.getElementById('ap-cycle').value);
+            const image = document.getElementById('ap-img').value;
+
+            const newProd = {
+                id: db.products.length + 1,
+                name,
+                price,
+                daily,
+                cycle,
+                total: daily * cycle,
+                image
+            };
+            db.products.push(newProd);
+            saveState();
+            alert('New product added to inventory successfully!');
+            renderAdminDashboard();
+        }
+
+        function verifyRecharge(rId) {
+            db = loadDatabase();
+            const r = db.pendingRecharges.find(item => item.id === rId);
+            if(!r) return;
+
+            const targetUser = db.users.find(u => u.identifier === r.user);
+            if(targetUser) {
+                targetUser.balance += r.amount;
+                targetUser.totalRecharged += r.amount;
+                targetUser.status = 'Verified Active Member';
+                const userRch = targetUser.recharges.find(rc => rc.id === rId);
+                if(userRch) userRch.status = 'Verified & Credited';
+            }
+
+            db.pendingRecharges = db.pendingRecharges.filter(item => item.id !== rId);
+            saveState();
+            alert(`Recharge for ${r.user} verified and credited successfully!`);
+            renderAdminDashboard();
+        }
+
+        function verifyWithdraw(wId) {
+            db = loadDatabase();
+            const w = db.pendingWithdraws.find(item => item.id === wId);
+            if(!w) return;
+
+            const targetUser = db.users.find(u => u.identifier === w.user);
+            if(targetUser) {
+                const userWth = targetUser.withdraws.find(wt => wt.id === wId);
+                if(userWth) userWth.status = 'Approved & Paid Out';
+            }
+
+            db.pendingWithdraws = db.pendingWithdraws.filter(item => item.id !== wId);
+            saveState();
+            alert('Withdrawal approved successfully!');
+            renderAdminDashboard();
+        }
+    </script>
+</body>
+</html>
